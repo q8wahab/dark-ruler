@@ -488,7 +488,7 @@ class Player {
         if (this.attackCooldown > 0 || this.attacking || this.ammo <= 0) return;
 
         this.attacking = true;
-        this.attackCooldown = 0.3;
+        this.attackCooldown = 0.15; // Faster fire rate (was 0.3)
         this.ammo--;
 
         console.log("SHOOTING! Ammo:", this.ammo);
