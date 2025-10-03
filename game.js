@@ -267,6 +267,10 @@ class Player {
         // First-person camera
         this.cameraRotation = { yaw: 0, pitch: 0 };
         this.eyeHeight = 1.6;
+
+        // Ammo regeneration timer
+        this.ammoRegenTimer = 0;
+        this.ammoRegenInterval = 60; // 60 seconds = 1 minute
     }
 
     createGun() {
@@ -308,6 +312,15 @@ class Player {
         // Regenerate stamina
         if (this.stamina < this.maxStamina) {
             this.stamina = Math.min(this.maxStamina, this.stamina + delta * 20);
+        }
+
+        // Ammo regeneration every minute
+        this.ammoRegenTimer += delta;
+        if (this.ammoRegenTimer >= this.ammoRegenInterval) {
+            this.ammoRegenTimer = 0;
+            this.ammo = Math.min(this.maxAmmo, this.ammo + 5);
+            console.log("Auto ammo regen: +5 bullets");
+            updateResourceBars();
         }
 
         // Movement
@@ -958,17 +971,34 @@ class Dragon {
 // ==================== AMMO PICKUP ====================
 class AmmoPickup {
     constructor(x, z) {
-        // Ammo box
-        const boxGeom = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-        const boxMat = new THREE.MeshStandardMaterial({
+        // Bullet shape
+        this.mesh = new THREE.Group();
+
+        // Bullet casing (cylinder)
+        const casingGeom = new THREE.CylinderGeometry(0.15, 0.15, 0.6, 16);
+        const casingMat = new THREE.MeshStandardMaterial({
             color: 0xffd700,
-            flatShading: true,
             emissive: 0xffd700,
-            emissiveIntensity: 0.4,
-            metalness: 0.6
+            emissiveIntensity: 0.5,
+            metalness: 0.8,
+            roughness: 0.3
         });
-        this.mesh = new THREE.Mesh(boxGeom, boxMat);
+        const casing = new THREE.Mesh(casingGeom, casingMat);
+        this.mesh.add(casing);
+
+        // Bullet tip (cone)
+        const tipGeom = new THREE.ConeGeometry(0.15, 0.4, 16);
+        const tipMat = new THREE.MeshStandardMaterial({
+            color: 0xc0c0c0,
+            metalness: 0.9,
+            roughness: 0.2
+        });
+        const tip = new THREE.Mesh(tipGeom, tipMat);
+        tip.position.y = 0.5;
+        this.mesh.add(tip);
+
         this.mesh.position.set(x, 0.5, z);
+        this.mesh.rotation.z = Math.PI / 2; // Rotate to horizontal
         this.mesh.castShadow = true;
         scene.add(this.mesh);
 
@@ -980,8 +1010,8 @@ class AmmoPickup {
     update(delta, time) {
         if (this.collected) return;
 
-        // Rotate and bob
-        this.mesh.rotation.y += delta * this.rotationSpeed;
+        // Rotate and bob (spin around its length)
+        this.mesh.rotation.z += delta * this.rotationSpeed;
         this.mesh.position.y = 0.5 + Math.sin(time * 3 + this.bobOffset) * 0.2;
 
         // Check if player is close enough to collect
@@ -997,8 +1027,8 @@ class AmmoPickup {
         this.collected = true;
         scene.remove(this.mesh);
 
-        // Give player ammo (scales with wave)
-        const ammoGained = 15 + Math.floor(gameState.currentWave / 5) * 5;
+        // Give player 15 bullets
+        const ammoGained = 15;
         player.ammo = Math.min(player.maxAmmo, player.ammo + ammoGained);
         updateResourceBars();
 
@@ -1077,8 +1107,8 @@ function spawnWave(waveNumber) {
         dragons.push(dragon);
     }
 
-    // Spawn ammo pickups (more in later waves - scales better)
-    const ammoCount = 3 + Math.floor(waveNumber / 3) + Math.floor(waveNumber / 10);
+    // Spawn 15 ammo pickups
+    const ammoCount = 15;
     spawnAmmoPickups(ammoCount);
 
     updateWaveUI();
