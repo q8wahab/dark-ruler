@@ -310,9 +310,9 @@ class Player {
     }
 
     update(delta) {
-        // Regenerate stamina
+        // Regenerate stamina (slower)
         if (this.stamina < this.maxStamina) {
-            this.stamina = Math.min(this.maxStamina, this.stamina + delta * 20);
+            this.stamina = Math.min(this.maxStamina, this.stamina + delta * 5); // Slower regen (was 20)
         }
 
         // Ammo regeneration every minute
@@ -330,7 +330,7 @@ class Player {
         let speed = this.speed;
         if (keys['shift'] && this.stamina > 0 && this.isGrounded) {
             speed *= this.sprintMultiplier;
-            this.stamina = Math.max(0, this.stamina - delta * 30);
+            this.stamina = Math.max(0, this.stamina - delta * 40); // Faster drain (was 10)
         }
 
         // Get camera forward and right vectors
