@@ -709,7 +709,7 @@ class Enemy {
         // Stats
         this.health = isKing ? 100 : 50;
         this.maxHealth = this.health;
-        this.speed = isKing ? 2.5 : 2;
+        this.speed = isKing ? 5 : 4; // 2x faster
         this.damage = isKing ? 20 : 10;
         this.chaseRange = 80; // Notice from much farther
         this.attackRange = 1.5;
@@ -894,7 +894,7 @@ class Dragon {
         // Stats
         this.health = isKing ? 200 : 80;
         this.maxHealth = this.health;
-        this.speed = 3;
+        this.speed = 6; // 2x faster
         this.damage = isKing ? 25 : 15;
         this.attackRange = 3;
         this.attackCooldown = 0;
