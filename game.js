@@ -1,6 +1,6 @@
 // ==================== GAME INITIALIZATION ====================
 let scene, camera, renderer, clock;
-let player, terrain, enemies = [], dragons = [];
+let player, terrain, enemies = [], dragons = [], skeletons = [];
 let ammoPickups = [];
 let gameState = {
     running: false,
@@ -542,7 +542,7 @@ class Player {
         let closestDistance = Infinity;
         let isHeadshot = false;
 
-        [...enemies, ...dragons].forEach(enemy => {
+        [...enemies, ...dragons, ...skeletons].forEach(enemy => {
             if (enemy.dead) return;
 
             // Check if enemy mesh intersects with ray
@@ -559,7 +559,14 @@ class Player {
                     const hitPoint = intersects[0].point;
 
                     // Head is at higher Y position - check if hit is in upper portion
-                    const enemyHeadHeight = enemy.mesh.position.y + (enemy.type === 'dragon' ? 0.3 : 1.55);
+                    let enemyHeadHeight;
+                    if (enemy.type === 'dragon') {
+                        enemyHeadHeight = enemy.mesh.position.y + 0.3;
+                    } else if (enemy.type === 'skeleton') {
+                        enemyHeadHeight = enemy.mesh.position.y + 1.45;
+                    } else {
+                        enemyHeadHeight = enemy.mesh.position.y + 1.55;
+                    }
                     isHeadshot = hitPoint.y >= enemyHeadHeight - 0.3; // Within head range
                 }
             }
@@ -782,6 +789,377 @@ class Enemy {
 
         // Keep in bounds
         const limit = 95; // Smaller platform bounds
+        this.mesh.position.x = Math.max(-limit, Math.min(limit, this.mesh.position.x));
+        this.mesh.position.z = Math.max(-limit, Math.min(limit, this.mesh.position.z));
+    }
+
+    die() {
+        this.dead = true;
+        scene.remove(this.mesh);
+        gameState.enemiesDefeated++;
+        updateStats();
+        checkVictory();
+    }
+}
+
+// ==================== SKELETON ====================
+class Skeleton {
+    constructor(x, z) {
+        this.type = 'skeleton';
+        this.headMesh = null;
+
+        const size = 1.5;
+        this.mesh = new THREE.Group();
+
+        // Skeleton bone color
+        const boneMat = new THREE.MeshStandardMaterial({
+            color: 0xe8e0d5,
+            flatShading: false,
+            roughness: 0.8,
+            metalness: 0.1
+        });
+
+        // Full spine (connects pelvis to neck)
+        const fullSpineGeom = new THREE.CylinderGeometry(size * 0.08, size * 0.08, size * 1.1, 8);
+        const fullSpine = new THREE.Mesh(fullSpineGeom, boneMat);
+        fullSpine.position.y = size * 0.6;
+        fullSpine.castShadow = true;
+        this.mesh.add(fullSpine);
+
+        // Ribcage with individual ribs (connected to spine)
+        const ribcageGroup = new THREE.Group();
+
+        // Individual ribs (curved, attached to spine)
+        const ribCount = 6;
+        for (let i = 0; i < ribCount; i++) {
+            const ribY = (i / (ribCount - 1)) * size * 0.6 - size * 0.3;
+            const ribRadius = size * 0.25 + (Math.sin((i / ribCount) * Math.PI) * size * 0.1);
+
+            // Left rib
+            const leftRib = new THREE.Mesh(
+                new THREE.CylinderGeometry(size * 0.04, size * 0.04, ribRadius, 8),
+                boneMat
+            );
+            leftRib.position.set(-ribRadius / 2, ribY, 0);
+            leftRib.rotation.z = Math.PI / 2;
+            leftRib.rotation.y = -0.3;
+            leftRib.castShadow = true;
+            ribcageGroup.add(leftRib);
+
+            // Right rib
+            const rightRib = new THREE.Mesh(
+                new THREE.CylinderGeometry(size * 0.04, size * 0.04, ribRadius, 8),
+                boneMat
+            );
+            rightRib.position.set(ribRadius / 2, ribY, 0);
+            rightRib.rotation.z = Math.PI / 2;
+            rightRib.rotation.y = 0.3;
+            rightRib.castShadow = true;
+            ribcageGroup.add(rightRib);
+        }
+
+        ribcageGroup.position.y = size * 0.6;
+        this.mesh.add(ribcageGroup);
+
+        // Pelvis (connected to bottom of spine)
+        const pelvisGeom = new THREE.BoxGeometry(size * 0.4, size * 0.2, size * 0.3);
+        const pelvis = new THREE.Mesh(pelvisGeom, boneMat);
+        pelvis.position.y = size * 0.05;
+        pelvis.castShadow = true;
+        this.mesh.add(pelvis);
+
+        // Hip joints (connect pelvis to legs)
+        const hipGeom = new THREE.SphereGeometry(size * 0.1, 8, 8);
+        const leftHip = new THREE.Mesh(hipGeom, boneMat);
+        leftHip.position.set(-size * 0.15, size * 0.0, 0);
+        leftHip.castShadow = true;
+        this.mesh.add(leftHip);
+
+        const rightHip = new THREE.Mesh(hipGeom, boneMat);
+        rightHip.position.set(size * 0.15, size * 0.0, 0);
+        rightHip.castShadow = true;
+        this.mesh.add(rightHip);
+
+        // Neck (connects spine to head)
+        const neckGeom = new THREE.CylinderGeometry(size * 0.1, size * 0.12, size * 0.25, 8);
+        const neck = new THREE.Mesh(neckGeom, boneMat);
+        neck.position.y = size * 1.15;
+        neck.castShadow = true;
+        this.mesh.add(neck);
+
+        // Skull (sphere - connected to neck)
+        const skullGeom = new THREE.SphereGeometry(size * 0.3, 16, 16);
+        const skull = new THREE.Mesh(skullGeom, boneMat);
+        skull.position.y = size * 1.45;
+        skull.castShadow = true;
+        skull.name = 'head';
+        this.mesh.add(skull);
+        this.headMesh = skull;
+
+        // Eye sockets (dark spheres)
+        const eyeGeom = new THREE.SphereGeometry(0.06, 8, 8);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        const eye1 = new THREE.Mesh(eyeGeom, eyeMat);
+        const eye2 = new THREE.Mesh(eyeGeom, eyeMat);
+        eye1.position.set(-0.12, size * 1.5, size * 0.25);
+        eye2.position.set(0.12, size * 1.5, size * 0.25);
+        this.mesh.add(eye1);
+        this.mesh.add(eye2);
+
+        // Clavicles (collarbones - connect spine to shoulders)
+        const clavicleGeom = new THREE.CylinderGeometry(size * 0.05, size * 0.05, size * 0.3, 8);
+        const leftClavicle = new THREE.Mesh(clavicleGeom, boneMat);
+        leftClavicle.position.set(-size * 0.2, size * 0.98, 0);
+        leftClavicle.rotation.z = Math.PI / 4;
+        leftClavicle.castShadow = true;
+        this.mesh.add(leftClavicle);
+
+        const rightClavicle = new THREE.Mesh(clavicleGeom, boneMat);
+        rightClavicle.position.set(size * 0.2, size * 0.98, 0);
+        rightClavicle.rotation.z = -Math.PI / 4;
+        rightClavicle.castShadow = true;
+        this.mesh.add(rightClavicle);
+
+        // Shoulders (connect clavicles to arms)
+        const shoulderGeom = new THREE.SphereGeometry(size * 0.12, 8, 8);
+        const leftShoulder = new THREE.Mesh(shoulderGeom, boneMat);
+        leftShoulder.position.set(-size * 0.35, size * 0.95, 0);
+        leftShoulder.castShadow = true;
+        this.mesh.add(leftShoulder);
+
+        const rightShoulder = new THREE.Mesh(shoulderGeom, boneMat);
+        rightShoulder.position.set(size * 0.35, size * 0.95, 0);
+        rightShoulder.castShadow = true;
+        this.mesh.add(rightShoulder);
+
+        // Upper arms (connect shoulders to elbows)
+        const armGeom = new THREE.CylinderGeometry(size * 0.08, size * 0.08, size * 0.5, 8);
+        const leftUpperArm = new THREE.Mesh(armGeom, boneMat);
+        leftUpperArm.position.set(-size * 0.45, size * 0.65, 0);
+        leftUpperArm.rotation.z = 0.3;
+        leftUpperArm.castShadow = true;
+        this.mesh.add(leftUpperArm);
+
+        const rightUpperArm = new THREE.Mesh(armGeom, boneMat);
+        rightUpperArm.position.set(size * 0.45, size * 0.65, 0);
+        rightUpperArm.rotation.z = -0.3;
+        rightUpperArm.castShadow = true;
+        this.mesh.add(rightUpperArm);
+
+        // Elbows (connect upper arms to forearms)
+        const elbowGeom = new THREE.SphereGeometry(size * 0.09, 8, 8);
+        const leftElbow = new THREE.Mesh(elbowGeom, boneMat);
+        leftElbow.position.set(-size * 0.55, size * 0.42, 0);
+        leftElbow.castShadow = true;
+        this.mesh.add(leftElbow);
+
+        const rightElbow = new THREE.Mesh(elbowGeom, boneMat);
+        rightElbow.position.set(size * 0.55, size * 0.42, 0);
+        rightElbow.castShadow = true;
+        this.mesh.add(rightElbow);
+
+        // Forearms (connect elbows to wrists)
+        const forearmGeom = new THREE.CylinderGeometry(size * 0.07, size * 0.06, size * 0.4, 8);
+        const leftForearm = new THREE.Mesh(forearmGeom, boneMat);
+        leftForearm.position.set(-size * 0.58, size * 0.22, 0);
+        leftForearm.rotation.z = 0.15;
+        leftForearm.castShadow = true;
+        this.mesh.add(leftForearm);
+
+        const rightForearm = new THREE.Mesh(forearmGeom, boneMat);
+        rightForearm.position.set(size * 0.58, size * 0.22, 0);
+        rightForearm.rotation.z = -0.15;
+        rightForearm.castShadow = true;
+        this.mesh.add(rightForearm);
+
+        // Wrists (connect forearms to hands)
+        const wristGeom = new THREE.SphereGeometry(size * 0.07, 8, 8);
+        const leftWrist = new THREE.Mesh(wristGeom, boneMat);
+        leftWrist.position.set(-size * 0.6, size * 0.05, 0);
+        leftWrist.castShadow = true;
+        this.mesh.add(leftWrist);
+
+        const rightWrist = new THREE.Mesh(wristGeom, boneMat);
+        rightWrist.position.set(size * 0.6, size * 0.05, 0);
+        rightWrist.castShadow = true;
+        this.mesh.add(rightWrist);
+
+        // Hands (connected to wrists)
+        const handGeom = new THREE.BoxGeometry(size * 0.1, size * 0.08, size * 0.08);
+        const leftHand = new THREE.Mesh(handGeom, boneMat);
+        leftHand.position.set(-size * 0.6, size * -0.05, 0);
+        leftHand.castShadow = true;
+        this.mesh.add(leftHand);
+
+        const rightHand = new THREE.Mesh(handGeom, boneMat);
+        rightHand.position.set(size * 0.6, size * -0.05, 0);
+        rightHand.castShadow = true;
+        this.mesh.add(rightHand);
+
+        // Upper legs/thighs (connected from hips to knees)
+        const thighGeom = new THREE.CylinderGeometry(size * 0.1, size * 0.09, size * 0.4, 8);
+        const leftThigh = new THREE.Mesh(thighGeom, boneMat);
+        leftThigh.position.set(-size * 0.15, -0.2, 0);
+        leftThigh.castShadow = true;
+        this.mesh.add(leftThigh);
+
+        const rightThigh = new THREE.Mesh(thighGeom, boneMat);
+        rightThigh.position.set(size * 0.15, -0.2, 0);
+        rightThigh.castShadow = true;
+        this.mesh.add(rightThigh);
+
+        // Knees (connect thighs to shins)
+        const kneeGeom = new THREE.SphereGeometry(size * 0.09, 8, 8);
+        const leftKnee = new THREE.Mesh(kneeGeom, boneMat);
+        leftKnee.position.set(-size * 0.15, -0.42, 0);
+        leftKnee.castShadow = true;
+        this.mesh.add(leftKnee);
+
+        const rightKnee = new THREE.Mesh(kneeGeom, boneMat);
+        rightKnee.position.set(size * 0.15, -0.42, 0);
+        rightKnee.castShadow = true;
+        this.mesh.add(rightKnee);
+
+        // Lower legs/shins (connected from knees to ankles)
+        const shinGeom = new THREE.CylinderGeometry(size * 0.08, size * 0.07, size * 0.35, 8);
+        const leftShin = new THREE.Mesh(shinGeom, boneMat);
+        leftShin.position.set(-size * 0.15, -0.6, 0);
+        leftShin.castShadow = true;
+        this.mesh.add(leftShin);
+
+        const rightShin = new THREE.Mesh(shinGeom, boneMat);
+        rightShin.position.set(size * 0.15, -0.6, 0);
+        rightShin.castShadow = true;
+        this.mesh.add(rightShin);
+
+        // Ankles (connect shins to feet)
+        const ankleGeom = new THREE.SphereGeometry(size * 0.07, 8, 8);
+        const leftAnkle = new THREE.Mesh(ankleGeom, boneMat);
+        leftAnkle.position.set(-size * 0.15, -0.78, 0);
+        leftAnkle.castShadow = true;
+        this.mesh.add(leftAnkle);
+
+        const rightAnkle = new THREE.Mesh(ankleGeom, boneMat);
+        rightAnkle.position.set(size * 0.15, -0.78, 0);
+        rightAnkle.castShadow = true;
+        this.mesh.add(rightAnkle);
+
+        // Feet (connected to ankles)
+        const footGeom = new THREE.BoxGeometry(size * 0.12, size * 0.08, size * 0.2);
+        const leftFoot = new THREE.Mesh(footGeom, boneMat);
+        leftFoot.position.set(-size * 0.15, -0.82, size * 0.05);
+        leftFoot.castShadow = true;
+        this.mesh.add(leftFoot);
+
+        const rightFoot = new THREE.Mesh(footGeom, boneMat);
+        rightFoot.position.set(size * 0.15, -0.82, size * 0.05);
+        rightFoot.castShadow = true;
+        this.mesh.add(rightFoot);
+
+        // Sword (held in right hand)
+        const swordGroup = new THREE.Group();
+
+        // Sword blade
+        const bladeGeom = new THREE.BoxGeometry(0.08, 1.2, 0.02);
+        const bladeMat = new THREE.MeshStandardMaterial({
+            color: 0xc0c0c0,
+            metalness: 0.9,
+            roughness: 0.2
+        });
+        const blade = new THREE.Mesh(bladeGeom, bladeMat);
+        blade.position.y = 0.6;
+        swordGroup.add(blade);
+
+        // Sword handle
+        const handleGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.3, 8);
+        const handleMat = new THREE.MeshStandardMaterial({
+            color: 0x654321,
+            roughness: 0.7
+        });
+        const handle = new THREE.Mesh(handleGeom, handleMat);
+        swordGroup.add(handle);
+
+        // Sword guard
+        const guardGeom = new THREE.BoxGeometry(0.3, 0.05, 0.05);
+        const guard = new THREE.Mesh(guardGeom, bladeMat);
+        guard.position.y = 0.15;
+        swordGroup.add(guard);
+
+        swordGroup.position.set(size * 0.6, size * -0.05, 0);
+        swordGroup.rotation.z = -0.5;
+        swordGroup.castShadow = true;
+        this.mesh.add(swordGroup);
+
+        this.mesh.position.set(x, 0, z);
+        scene.add(this.mesh);
+
+        // Stats
+        this.health = 60;
+        this.maxHealth = this.health;
+        this.speed = 3.5;
+        this.damage = 25;
+        this.chaseRange = 80;
+        this.attackRange = 1.8;
+        this.attackCooldown = 0;
+        this.state = 'patrol';
+        this.patrolAngle = Math.random() * Math.PI * 2;
+        this.dead = false;
+    }
+
+    takeDamage(damage, isHeadshot = false) {
+        this.health -= damage;
+
+        if (this.health <= 0 && !this.dead) {
+            this.die();
+        }
+    }
+
+    update(delta, playerPos) {
+        if (this.dead) return;
+
+        const distance = this.mesh.position.distanceTo(playerPos);
+
+        // State machine
+        if (distance < this.attackRange) {
+            this.state = 'attack';
+        } else if (distance < this.chaseRange) {
+            this.state = 'chase';
+        } else {
+            this.state = 'patrol';
+        }
+
+        // Behavior
+        if (this.state === 'chase') {
+            const direction = new THREE.Vector3()
+                .subVectors(playerPos, this.mesh.position)
+                .normalize();
+
+            this.mesh.position.x += direction.x * this.speed * delta;
+            this.mesh.position.z += direction.z * this.speed * delta;
+            this.mesh.lookAt(playerPos);
+        } else if (this.state === 'patrol') {
+            this.patrolAngle += (Math.random() - 0.5) * 0.1;
+            this.mesh.position.x += Math.cos(this.patrolAngle) * this.speed * 0.3 * delta;
+            this.mesh.position.z += Math.sin(this.patrolAngle) * this.speed * 0.3 * delta;
+        } else if (this.state === 'attack') {
+            const touchDistance = this.mesh.position.distanceTo(playerPos);
+            if (this.attackCooldown <= 0 && touchDistance < this.attackRange) {
+                player.takeDamage(this.damage);
+                this.attackCooldown = 1.5;
+            }
+        }
+
+        // Update cooldown
+        if (this.attackCooldown > 0) {
+            this.attackCooldown -= delta;
+        }
+
+        // Stand on terrain
+        const terrainHeight = getTerrainHeight(this.mesh.position.x, this.mesh.position.z);
+        this.mesh.position.y = terrainHeight;
+
+        // Keep in bounds
+        const limit = 95;
         this.mesh.position.x = Math.max(-limit, Math.min(limit, this.mesh.position.x));
         this.mesh.position.z = Math.max(-limit, Math.min(limit, this.mesh.position.z));
     }
@@ -1072,9 +1450,11 @@ function spawnWave(waveNumber) {
     // Clear existing
     enemies.forEach(e => e.mesh && scene.remove(e.mesh));
     dragons.forEach(d => d.mesh && scene.remove(d.mesh));
+    skeletons.forEach(s => s.mesh && scene.remove(s.mesh));
     ammoPickups.forEach(a => a.mesh && scene.remove(a.mesh));
     enemies = [];
     dragons = [];
+    skeletons = [];
     ammoPickups = [];
 
     gameState.waveActive = true;
@@ -1082,6 +1462,7 @@ function spawnWave(waveNumber) {
     // Scale difficulty with wave number
     const goblinCount = 5 + waveNumber * 2;
     const kingCount = Math.floor(waveNumber / 2) + 1;
+    const skeletonCount = Math.floor(waveNumber / 2) + 2; // Skeletons appear every wave
     const dragonCount = Math.floor(waveNumber / 3) + 1;
     const dragonKingCount = waveNumber >= 5 ? 1 : 0;
 
@@ -1106,6 +1487,17 @@ function spawnWave(waveNumber) {
         enemy.maxHealth = enemy.health;
         enemy.damage += Math.floor(waveNumber / 2);
         enemies.push(enemy);
+    }
+
+    // Spawn skeletons
+    for (let i = 0; i < skeletonCount; i++) {
+        const x = (Math.random() - 0.5) * 160;
+        const z = (Math.random() - 0.5) * 160;
+        const skeleton = new Skeleton(x, z);
+        skeleton.health += waveNumber * 10;
+        skeleton.maxHealth = skeleton.health;
+        skeleton.damage += Math.floor(waveNumber / 2);
+        skeletons.push(skeleton);
     }
 
     // Spawn dragons (after wave 2)
@@ -1250,7 +1642,7 @@ function updateStats() {
 }
 
 function checkVictory() {
-    const allDead = [...enemies, ...dragons].every(e => e.dead);
+    const allDead = [...enemies, ...dragons, ...skeletons].every(e => e.dead);
     if (allDead && gameState.running && gameState.waveActive) {
         gameState.waveActive = false;
 
@@ -1290,7 +1682,7 @@ function updateWaveUI() {
     document.getElementById('total-waves').textContent = gameState.totalWaves;
 
     const waveStatus = document.getElementById('wave-status');
-    const enemyCount = enemies.filter(e => !e.dead).length + dragons.filter(d => !d.dead).length;
+    const enemyCount = enemies.filter(e => !e.dead).length + dragons.filter(d => !d.dead).length + skeletons.filter(s => !s.dead).length;
     waveStatus.textContent = `Enemies: ${enemyCount}`;
     waveStatus.style.color = '#ff6666';
     waveStatus.style.fontSize = '16px';
@@ -1396,6 +1788,9 @@ function update(delta) {
 
     // Update enemies
     enemies.forEach(enemy => enemy.update(delta, player.mesh.position));
+
+    // Update skeletons
+    skeletons.forEach(skeleton => skeleton.update(delta, player.mesh.position));
 
     // Update dragons
     dragons.forEach(dragon => dragon.update(delta, player.mesh.position, time));
