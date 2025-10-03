@@ -8,7 +8,7 @@ let gameState = {
     screen: 'menu',
     enemiesDefeated: 0,
     currentWave: 1,
-    totalWaves: 50,
+    totalWaves: 20,
     waveActive: false,
     currentTerritory: 'Prison Ruins'
 };
