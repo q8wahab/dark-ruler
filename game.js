@@ -255,6 +255,7 @@ class Player {
         this.attackCooldown = 0;
         this.attackRange = 100; // Much longer range for pistol
         this.attackDamage = 35;
+        this.headshotMultiplier = 2; // Headshots do 2x damage
 
         // Movement
         this.velocity = new THREE.Vector3();
@@ -539,6 +540,7 @@ class Player {
 
         let closestEnemy = null;
         let closestDistance = Infinity;
+        let isHeadshot = false;
 
         [...enemies, ...dragons].forEach(enemy => {
             if (enemy.dead) return;
@@ -551,14 +553,28 @@ class Player {
                 if (distance < closestDistance) {
                     closestDistance = distance;
                     closestEnemy = enemy;
+
+                    // Check if hit the head (check object name or position)
+                    const hitObject = intersects[0].object;
+                    const hitPoint = intersects[0].point;
+
+                    // Head is at higher Y position - check if hit is in upper portion
+                    const enemyHeadHeight = enemy.mesh.position.y + (enemy.type === 'dragon' ? 0.3 : 1.55);
+                    isHeadshot = hitPoint.y >= enemyHeadHeight - 0.3; // Within head range
                 }
             }
         });
 
-        // Hit closest enemy
+        // Hit closest enemy with damage calculation
         if (closestEnemy) {
-            closestEnemy.takeDamage(this.attackDamage);
-            console.log("HIT ENEMY! Distance:", closestDistance);
+            let damage = this.attackDamage;
+            if (isHeadshot) {
+                damage *= this.headshotMultiplier;
+                console.log("HEADSHOT! Damage:", damage, "Distance:", closestDistance);
+            } else {
+                console.log("HIT ENEMY! Damage:", damage, "Distance:", closestDistance);
+            }
+            closestEnemy.takeDamage(damage, isHeadshot);
         } else {
             console.log("MISS - no enemy hit");
         }
@@ -609,6 +625,7 @@ class Player {
 class Enemy {
     constructor(x, z, type = 'goblin') {
         this.type = type;
+        this.headMesh = null; // Reference to head for headshot detection
         const isKing = type === 'king';
 
         // Low-poly enemy model - smaller size
@@ -643,7 +660,9 @@ class Enemy {
         const head = new THREE.Mesh(headGeom, bodyMat);
         head.position.y = size * 1.525; // Head bottom touches neck top
         head.castShadow = true;
+        head.name = 'head'; // Mark as head for headshot detection
         this.mesh.add(head);
+        this.headMesh = head;
 
         // Smooth glowing eyes
         const eyeGeom = new THREE.SphereGeometry(0.08, 16, 16);
@@ -698,6 +717,14 @@ class Enemy {
         this.state = 'patrol';
         this.patrolAngle = Math.random() * Math.PI * 2;
         this.dead = false;
+    }
+
+    takeDamage(damage, isHeadshot = false) {
+        this.health -= damage;
+
+        if (this.health <= 0 && !this.dead) {
+            this.die();
+        }
     }
 
     update(delta, playerPos) {
@@ -759,14 +786,6 @@ class Enemy {
         this.mesh.position.z = Math.max(-limit, Math.min(limit, this.mesh.position.z));
     }
 
-    takeDamage(damage) {
-        this.health -= damage;
-
-        if (this.health <= 0 && !this.dead) {
-            this.die();
-        }
-    }
-
     die() {
         this.dead = true;
         scene.remove(this.mesh);
@@ -780,6 +799,8 @@ class Enemy {
 class Dragon {
     constructor(x, z, isKing = false) {
         this.isKing = isKing;
+        this.type = 'dragon'; // Mark as dragon type
+        this.headMesh = null; // Reference to head for headshot detection
         const size = isKing ? 2.5 : 1.5; // Smaller size
 
         // More realistic dragon material
@@ -838,7 +859,9 @@ class Dragon {
         const head = new THREE.Mesh(headGeom, bodyMat);
         head.position.set(0, 0.25, size * 1.05); // Touches neck end
         head.castShadow = true;
+        head.name = 'head'; // Mark as head for headshot detection
         this.mesh.add(head);
+        this.headMesh = head;
 
         // Smooth horns
         const hornGeom = new THREE.ConeGeometry(0.1, 0.5, 16);
@@ -925,6 +948,14 @@ class Dragon {
         this.mesh.position.z = Math.max(-limit, Math.min(limit, this.mesh.position.z));
     }
 
+    takeDamage(damage, isHeadshot = false) {
+        this.health -= damage;
+
+        if (this.health <= 0 && !this.dead) {
+            this.die();
+        }
+    }
+
     createFireBreath() {
         const direction = new THREE.Vector3()
             .subVectors(player.mesh.position, this.mesh.position)
@@ -948,14 +979,6 @@ class Dragon {
             scene.add(particle);
 
             setTimeout(() => scene.remove(particle), 500);
-        }
-    }
-
-    takeDamage(damage) {
-        this.health -= damage;
-
-        if (this.health <= 0 && !this.dead) {
-            this.die();
         }
     }
 
