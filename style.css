@@ -1,0 +1,275 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background: #0a0a0a;
+    color: #fff;
+    overflow: hidden;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(to bottom, #1a0a0a, #0a0a0a);
+}
+
+#game-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    outline: none;
+}
+
+#game-canvas canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#game-ui {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 10;
+    pointer-events: none;
+}
+
+#title {
+    text-align: center;
+    font-size: 32px;
+    font-weight: bold;
+    color: #8B0000;
+    text-shadow: 2px 2px 4px #000, 0 0 10px #ff0000;
+    padding: 20px;
+    letter-spacing: 4px;
+}
+
+#hud {
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+#hud > div:first-child {
+    flex-direction: column;
+}
+
+#health-container, #stamina-container, #ammo-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+#ammo-text {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffd700;
+    min-width: 80px;
+}
+
+.label {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ddd;
+}
+
+#health-bar, #stamina-bar, #mana-bar {
+    width: 200px;
+    height: 25px;
+    background: #333;
+    border: 2px solid #666;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+#health-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(to bottom, #ff4444, #cc0000);
+    transition: width 0.3s ease;
+    box-shadow: inset 0 0 10px rgba(255, 100, 100, 0.5);
+}
+
+#stamina-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(to bottom, #44ff44, #00cc00);
+    transition: width 0.3s ease;
+    box-shadow: inset 0 0 10px rgba(100, 255, 100, 0.5);
+}
+
+#mana-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(to bottom, #4444ff, #0000cc);
+    transition: width 0.3s ease;
+    box-shadow: inset 0 0 10px rgba(100, 100, 255, 0.5);
+}
+
+#health-text {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+}
+
+#stats {
+    text-align: right;
+}
+
+#stats div {
+    font-size: 14px;
+    margin-bottom: 5px;
+    color: #ccc;
+}
+
+#stats span {
+    color: #fff;
+    font-weight: bold;
+}
+
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    pointer-events: all;
+}
+
+.screen.active {
+    display: flex;
+}
+
+.screen h1 {
+    font-size: 64px;
+    color: #8B0000;
+    text-shadow: 3px 3px 6px #000, 0 0 20px #ff0000;
+    margin-bottom: 30px;
+    letter-spacing: 8px;
+}
+
+.screen h2 {
+    font-size: 48px;
+    color: #8B0000;
+    text-shadow: 2px 2px 4px #000, 0 0 15px #ff0000;
+    margin-bottom: 30px;
+    letter-spacing: 6px;
+}
+
+.story {
+    max-width: 600px;
+    text-align: center;
+    margin-bottom: 40px;
+    line-height: 1.8;
+}
+
+.story p {
+    font-size: 18px;
+    color: #ccc;
+    margin-bottom: 15px;
+    text-shadow: 1px 1px 2px #000;
+}
+
+.menu-btn {
+    background: linear-gradient(to bottom, #8B0000, #600000);
+    color: #fff;
+    border: 2px solid #fff;
+    padding: 15px 40px;
+    font-size: 20px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 10px;
+    letter-spacing: 2px;
+    box-shadow: 0 0 20px rgba(139, 0, 0, 0.5);
+    transition: all 0.3s ease;
+}
+
+.menu-btn:hover {
+    background: linear-gradient(to bottom, #a00000, #8B0000);
+    box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+    transform: scale(1.05);
+}
+
+.menu-btn:active {
+    transform: scale(0.98);
+}
+
+.controls-list {
+    background: rgba(20, 20, 20, 0.8);
+    padding: 30px 60px;
+    border: 2px solid #8B0000;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+
+.controls-list p {
+    font-size: 20px;
+    margin: 15px 0;
+    color: #ddd;
+}
+
+.controls-list strong {
+    color: #ff6666;
+    font-size: 22px;
+}
+
+#final-stats {
+    font-size: 24px;
+    margin: 20px 0;
+    color: #ffd700;
+}
+
+#crosshair {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin-left: -10px;
+    margin-top: -10px;
+    pointer-events: none;
+    z-index: 100;
+}
+
+#crosshair::before,
+#crosshair::after {
+    content: '';
+    position: absolute;
+    background: rgba(255, 255, 255, 0.8);
+}
+
+#crosshair::before {
+    width: 2px;
+    height: 20px;
+    left: 9px;
+    top: 0;
+}
+
+#crosshair::after {
+    width: 20px;
+    height: 2px;
+    left: 0;
+    top: 9px;
+}

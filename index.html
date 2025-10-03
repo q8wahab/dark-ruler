@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Dark Ruler</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="game-ui">
+            <div id="title">THE DARK RULER</div>
+            <div id="hud">
+                <div id="health-container">
+                    <div class="label">Health:</div>
+                    <div id="health-bar">
+                        <div id="health-fill"></div>
+                    </div>
+                    <div id="health-text">100/100</div>
+                </div>
+                <div id="stamina-container">
+                    <div class="label">Stamina:</div>
+                    <div id="stamina-bar">
+                        <div id="stamina-fill"></div>
+                    </div>
+                </div>
+                <div id="ammo-container">
+                    <div class="label">Ammo:</div>
+                    <div id="ammo-text">30/30</div>
+                </div>
+                <div id="stats">
+                    <div id="wave-info">Wave: <span id="current-wave">1</span> / <span id="total-waves">10</span></div>
+                    <div id="kills">Enemies Defeated: <span>0</span></div>
+                    <div id="wave-status"></div>
+                </div>
+            </div>
+        </div>
+        <div id="game-canvas"></div>
+        <div id="crosshair"></div>
+        <div id="menu" class="screen active">
+            <h1>THE DARK RULER</h1>
+            <div class="story">
+                <p>Prince of Burgan, you have escaped your goblin captors...</p>
+                <p>But the world you knew is destroyed.</p>
+                <p>Your people have turned into monsters.</p>
+                <p>Dragons rule the skies over broken towers.</p>
+                <p>Defeat the goblin gangs and their kings.</p>
+                <p>Slay the dragon overlords.</p>
+                <p>Reclaim your kingdom.</p>
+            </div>
+            <button id="start-btn" class="menu-btn">START GAME</button>
+            <button id="controls-btn" class="menu-btn">CONTROLS</button>
+        </div>
+        <div id="controls-screen" class="screen">
+            <h2>CONTROLS</h2>
+            <div class="controls-list">
+                <p><strong>WASD</strong> - Move</p>
+                <p><strong>Mouse</strong> - Look Around</p>
+                <p><strong>Click</strong> - Shoot</p>
+                <p><strong>SPACE</strong> - Jump</p>
+                <p><strong>SHIFT</strong> - Sprint</p>
+                <p><strong>ESC</strong> - Pause</p>
+                <p style="color: #ffd700; margin-top: 15px;">Collect golden ammo boxes to refill!</p>
+            </div>
+            <button class="menu-btn back-btn">BACK</button>
+        </div>
+        <div id="game-over" class="screen">
+            <h1>DEFEATED</h1>
+            <button class="menu-btn restart-btn">TRY AGAIN</button>
+        </div>
+        <div id="victory" class="screen">
+            <h1>VICTORY!</h1>
+            <p>You have reclaimed the Kingdom of Burgan!</p>
+            <div id="final-stats"></div>
+            <button class="menu-btn restart-btn">PLAY AGAIN</button>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
