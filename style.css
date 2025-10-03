@@ -273,3 +273,135 @@ body {
     left: 0;
     top: 9px;
 }
+
+/* Mobile Controls */
+#mobile-controls {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 250px;
+    z-index: 50;
+    pointer-events: none;
+}
+
+#joystick-container {
+    position: absolute;
+    left: 30px;
+    bottom: 30px;
+    width: 150px;
+    height: 150px;
+    pointer-events: all;
+}
+
+#joystick-base {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+}
+
+#joystick-stick {
+    position: absolute;
+    width: 70px;
+    height: 70px;
+    background: rgba(255, 255, 255, 0.4);
+    border: 3px solid rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    left: 40px;
+    top: 40px;
+    touch-action: none;
+}
+
+#mobile-buttons {
+    position: absolute;
+    right: 30px;
+    bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    pointer-events: all;
+}
+
+.mobile-btn {
+    width: 100px;
+    height: 70px;
+    background: rgba(139, 0, 0, 0.7);
+    border: 3px solid rgba(255, 255, 255, 0.5);
+    border-radius: 10px;
+    color: #fff;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    touch-action: none;
+    transition: all 0.1s;
+}
+
+.mobile-btn:active {
+    background: rgba(200, 0, 0, 0.9);
+    transform: scale(0.95);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    #mobile-controls {
+        display: block;
+    }
+
+    #title {
+        font-size: 20px;
+        padding: 10px;
+    }
+
+    #hud {
+        padding: 10px;
+        font-size: 12px;
+    }
+
+    #health-bar, #stamina-bar {
+        width: 120px;
+        height: 20px;
+    }
+
+    .label {
+        font-size: 12px;
+    }
+
+    #ammo-text {
+        font-size: 14px;
+    }
+
+    .screen h1 {
+        font-size: 36px;
+    }
+
+    .screen h2 {
+        font-size: 28px;
+    }
+
+    .story {
+        max-width: 90%;
+        padding: 0 20px;
+    }
+
+    .story p {
+        font-size: 14px;
+    }
+
+    .menu-btn {
+        padding: 12px 30px;
+        font-size: 16px;
+    }
+
+    .controls-list {
+        padding: 20px 30px;
+    }
+
+    .controls-list p {
+        font-size: 16px;
+    }
+}

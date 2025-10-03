@@ -16,6 +16,11 @@ let gameState = {
 // Input handling
 const keys = {};
 const mouse = { x: 0, y: 0, locked: false };
+const mobileInput = {
+    joystick: { x: 0, y: 0, active: false },
+    shoot: false,
+    jump: false
+};
 
 // ==================== THREE.JS SETUP ====================
 function initThreeJS() {
@@ -326,7 +331,7 @@ class Player {
             -Math.sin(this.cameraRotation.yaw)
         );
 
-        // W = forward, S = backward, A = left, D = right
+        // Keyboard controls: W = backward, S = forward, A = left, D = right
         if (keys['w']) {
             this.mesh.position.x -= forward.x * speed * delta;
             this.mesh.position.z -= forward.z * speed * delta;
@@ -342,6 +347,16 @@ class Player {
         if (keys['d']) {
             this.mesh.position.x += right.x * speed * delta;
             this.mesh.position.z += right.z * speed * delta;
+        }
+
+        // Mobile joystick controls
+        if (mobileInput.joystick.active) {
+            const joyX = mobileInput.joystick.x;
+            const joyY = mobileInput.joystick.y;
+
+            // Move based on joystick direction
+            this.mesh.position.x += (right.x * joyX - forward.x * joyY) * speed * delta;
+            this.mesh.position.z += (right.z * joyX - forward.z * joyY) * speed * delta;
         }
 
         // Gravity and jumping
@@ -1362,8 +1377,123 @@ document.querySelectorAll('.restart-btn').forEach(btn => {
     btn.addEventListener('click', startGame);
 });
 
+// ==================== MOBILE CONTROLS ====================
+function initMobileControls() {
+    const joystickContainer = document.getElementById('joystick-container');
+    const joystickStick = document.getElementById('joystick-stick');
+    const shootBtn = document.getElementById('shoot-btn');
+    const jumpBtn = document.getElementById('jump-btn');
+
+    let joystickStartPos = { x: 40, y: 40 };
+    const maxDistance = 40;
+
+    // Joystick touch handling
+    joystickStick.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        mobileInput.joystick.active = true;
+    });
+
+    joystickStick.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (!mobileInput.joystick.active) return;
+
+        const touch = e.touches[0];
+        const rect = joystickContainer.getBoundingClientRect();
+        const centerX = rect.left + 75;
+        const centerY = rect.top + 75;
+
+        let deltaX = touch.clientX - centerX;
+        let deltaY = touch.clientY - centerY;
+
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+        if (distance > maxDistance) {
+            const angle = Math.atan2(deltaY, deltaX);
+            deltaX = Math.cos(angle) * maxDistance;
+            deltaY = Math.sin(angle) * maxDistance;
+        }
+
+        joystickStick.style.left = (40 + deltaX) + 'px';
+        joystickStick.style.top = (40 + deltaY) + 'px';
+
+        mobileInput.joystick.x = deltaX / maxDistance;
+        mobileInput.joystick.y = deltaY / maxDistance;
+    });
+
+    joystickStick.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        mobileInput.joystick.active = false;
+        mobileInput.joystick.x = 0;
+        mobileInput.joystick.y = 0;
+        joystickStick.style.left = '40px';
+        joystickStick.style.top = '40px';
+    });
+
+    // Shoot button
+    shootBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        mobileInput.shoot = true;
+        if (player && gameState.running) {
+            player.attack();
+        }
+    });
+
+    shootBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        mobileInput.shoot = false;
+    });
+
+    // Jump button
+    jumpBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        mobileInput.jump = true;
+        if (player && gameState.running) {
+            player.jump();
+        }
+    });
+
+    jumpBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        mobileInput.jump = false;
+    });
+
+    // Touch look controls (swipe on screen)
+    let lastTouchX = 0;
+    let lastTouchY = 0;
+    let touchLookActive = false;
+
+    renderer.domElement.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1 && gameState.running) {
+            touchLookActive = true;
+            lastTouchX = e.touches[0].clientX;
+            lastTouchY = e.touches[0].clientY;
+        }
+    });
+
+    renderer.domElement.addEventListener('touchmove', (e) => {
+        if (touchLookActive && e.touches.length === 1 && player) {
+            const sensitivity = 0.003;
+            const deltaX = e.touches[0].clientX - lastTouchX;
+            const deltaY = e.touches[0].clientY - lastTouchY;
+
+            player.cameraRotation.yaw -= deltaX * sensitivity;
+            player.cameraRotation.pitch -= deltaY * sensitivity;
+            player.cameraRotation.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, player.cameraRotation.pitch));
+
+            lastTouchX = e.touches[0].clientX;
+            lastTouchY = e.touches[0].clientY;
+        }
+    });
+
+    renderer.domElement.addEventListener('touchend', () => {
+        touchLookActive = false;
+    });
+}
+
 // ==================== INITIALIZE ====================
 initThreeJS();
 createTerrain();
 updateResourceBars();
 updateStats();
+initMobileControls();
+

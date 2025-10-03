@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>The Dark Ruler</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -37,6 +39,18 @@
         </div>
         <div id="game-canvas"></div>
         <div id="crosshair"></div>
+
+        <!-- Mobile Controls -->
+        <div id="mobile-controls">
+            <div id="joystick-container">
+                <div id="joystick-base"></div>
+                <div id="joystick-stick"></div>
+            </div>
+            <div id="mobile-buttons">
+                <button id="jump-btn" class="mobile-btn">JUMP</button>
+                <button id="shoot-btn" class="mobile-btn">SHOOT</button>
+            </div>
+        </div>
         <div id="menu" class="screen active">
             <h1>THE DARK RULER</h1>
             <div class="story">
@@ -54,12 +68,17 @@
         <div id="controls-screen" class="screen">
             <h2>CONTROLS</h2>
             <div class="controls-list">
+                <p><strong>Desktop:</strong></p>
                 <p><strong>WASD</strong> - Move</p>
                 <p><strong>Mouse</strong> - Look Around</p>
                 <p><strong>Click</strong> - Shoot</p>
                 <p><strong>SPACE</strong> - Jump</p>
                 <p><strong>SHIFT</strong> - Sprint</p>
-                <p><strong>ESC</strong> - Pause</p>
+                <p style="margin-top: 15px;"><strong>Mobile:</strong></p>
+                <p><strong>Joystick</strong> - Move</p>
+                <p><strong>Swipe Screen</strong> - Look Around</p>
+                <p><strong>SHOOT Button</strong> - Fire Weapon</p>
+                <p><strong>JUMP Button</strong> - Jump</p>
                 <p style="color: #ffd700; margin-top: 15px;">Collect golden ammo boxes to refill!</p>
             </div>
             <button class="menu-btn back-btn">BACK</button>
