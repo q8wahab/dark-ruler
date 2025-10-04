@@ -2,6 +2,7 @@
 let scene, camera, renderer, clock;
 let player, terrain, enemies = [], dragons = [], skeletons = [];
 let ammoPickups = [];
+let fireballs = [];
 let gameState = {
     running: false,
     paused: false,
@@ -366,7 +367,7 @@ class Player {
         // Mobile joystick controls
         if (mobileInput.joystick.active) {
             const joyX = mobileInput.joystick.x;
-            const joyY = mobileInput.joystick.y;
+            const joyY = -mobileInput.joystick.y; // Reversed Y (up/down)
 
             // Move based on joystick direction
             this.mesh.position.x += (right.x * joyX - forward.x * joyY) * speed * delta;
@@ -1094,7 +1095,7 @@ class Skeleton {
         scene.add(this.mesh);
 
         // Stats
-        this.health = 60;
+        this.health = 100;
         this.maxHealth = this.health;
         this.speed = 3.5;
         this.damage = 25;
@@ -1170,6 +1171,62 @@ class Skeleton {
         gameState.enemiesDefeated++;
         updateStats();
         checkVictory();
+    }
+}
+
+// ==================== FIREBALL ====================
+class Fireball {
+    constructor(startPos, direction) {
+        this.mesh = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 16, 16),
+            new THREE.MeshBasicMaterial({
+                color: 0xff4500,
+                emissive: 0xff4500,
+                emissiveIntensity: 2
+            })
+        );
+        this.mesh.position.copy(startPos);
+        scene.add(this.mesh);
+
+        this.velocity = direction.multiplyScalar(15); // Fireball speed
+        this.damage = 25;
+        this.lifetime = 5; // Seconds before disappearing
+        this.dead = false;
+    }
+
+    update(delta) {
+        if (this.dead) return;
+
+        // Move fireball
+        this.mesh.position.x += this.velocity.x * delta;
+        this.mesh.position.y += this.velocity.y * delta;
+        this.mesh.position.z += this.velocity.z * delta;
+
+        // Check collision with player
+        const distToPlayer = this.mesh.position.distanceTo(player.mesh.position);
+        if (distToPlayer < 1) {
+            player.takeDamage(this.damage);
+            this.destroy();
+            return;
+        }
+
+        // Check lifetime
+        this.lifetime -= delta;
+        if (this.lifetime <= 0) {
+            this.destroy();
+        }
+
+        // Check bounds
+        if (Math.abs(this.mesh.position.x) > 100 ||
+            Math.abs(this.mesh.position.z) > 100 ||
+            this.mesh.position.y < 0) {
+            this.destroy();
+        }
+    }
+
+    destroy() {
+        this.dead = true;
+        scene.remove(this.mesh);
     }
 }
 
@@ -1274,19 +1331,28 @@ class Dragon {
         this.maxHealth = this.health;
         this.speed = 6; // 2x faster
         this.damage = isKing ? 25 : 15;
-        this.attackRange = 3;
+        this.attackRange = 30; // Fireball range
         this.attackCooldown = 0;
         this.floatOffset = Math.random() * Math.PI * 2;
         this.dead = false;
+        this.groundHeight = 1.5; // Height when on ground
     }
 
     update(delta, playerPos, time) {
         if (this.dead) return;
 
-        // Float effect
-        this.mesh.position.y = 5 + Math.sin(time * 2 + this.floatOffset) * 1.5;
-
         const distance = this.mesh.position.distanceTo(playerPos);
+
+        // Land when player is in attack range
+        if (distance < this.attackRange) {
+            // Descend to ground
+            const terrainHeight = getTerrainHeight(this.mesh.position.x, this.mesh.position.z);
+            const targetY = terrainHeight + this.groundHeight;
+            this.mesh.position.y += (targetY - this.mesh.position.y) * delta * 2;
+        } else {
+            // Float in air when far away
+            this.mesh.position.y = 5 + Math.sin(time * 2 + this.floatOffset) * 1.5;
+        }
 
         // Chase player from farther away
         if (distance < 80) {
@@ -1299,13 +1365,10 @@ class Dragon {
             this.mesh.lookAt(playerPos.x, this.mesh.position.y, playerPos.z);
         }
 
-        // Attack - only when touching player
+        // Shoot fireball when in range
         if (distance < this.attackRange && this.attackCooldown <= 0) {
-            player.takeDamage(this.damage);
+            this.shootFireball(playerPos);
             this.attackCooldown = 2;
-
-            // Fire breath effect
-            this.createFireBreath();
         }
 
         if (this.attackCooldown > 0) {
@@ -1334,30 +1397,25 @@ class Dragon {
         }
     }
 
-    createFireBreath() {
+    shootFireball(playerPos) {
+        // Calculate direction from dragon's mouth to player
+        const mouthPos = new THREE.Vector3(
+            this.mesh.position.x,
+            this.mesh.position.y + 0.25,
+            this.mesh.position.z
+        );
+
+        // Get the head position (mouth is at the front of the head)
+        const headDirection = new THREE.Vector3();
+        this.mesh.getWorldDirection(headDirection);
+        mouthPos.add(headDirection.multiplyScalar(1.5)); // Position at dragon's mouth
+
         const direction = new THREE.Vector3()
-            .subVectors(player.mesh.position, this.mesh.position)
+            .subVectors(playerPos, mouthPos)
             .normalize();
 
-        for (let i = 0; i < 15; i++) {
-            const particleGeom = new THREE.SphereGeometry(0.3, 6, 6);
-            const particleMat = new THREE.MeshBasicMaterial({
-                color: i % 2 === 0 ? 0xff4500 : 0xffa500,
-                transparent: true,
-                opacity: 0.9
-            });
-            const particle = new THREE.Mesh(particleGeom, particleMat);
-            particle.position.copy(this.mesh.position);
-
-            const offset = i * 0.5;
-            particle.position.x += direction.x * offset + (Math.random() - 0.5) * 0.5;
-            particle.position.y += (Math.random() - 0.5) * 0.5;
-            particle.position.z += direction.z * offset + (Math.random() - 0.5) * 0.5;
-
-            scene.add(particle);
-
-            setTimeout(() => scene.remove(particle), 500);
-        }
+        const fireball = new Fireball(mouthPos, direction);
+        fireballs.push(fireball);
     }
 
     die() {
@@ -1794,6 +1852,12 @@ function update(delta) {
 
     // Update dragons
     dragons.forEach(dragon => dragon.update(delta, player.mesh.position, time));
+
+    // Update fireballs
+    fireballs.forEach(fireball => fireball.update(delta));
+
+    // Clean up dead fireballs
+    fireballs = fireballs.filter(f => !f.dead);
 
     // Update ammo pickups
     ammoPickups.forEach(ammo => {
